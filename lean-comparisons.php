@@ -3,7 +3,7 @@
  * Plugin Name: Lean Comparisons
  * Plugin URI:  https://github.com/ctala/lean-comparisons
  * Description: Programmatic SEO comparison pages for WordPress. CPT comparacion + reverse-linking to glosario CPT. Zero JS. No bloat.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Author:      Cristian Tala
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'LEAN_CMP_VERSION', '1.0.0' );
+define( 'LEAN_CMP_VERSION', '1.0.1' );
 define( 'LEAN_CMP_NS', '_lean_cmp_' );
 
 /*
@@ -65,7 +65,7 @@ function lean_cmp_register_cpt() {
 		'rest_base'           => 'comparaciones',
 		'menu_icon'           => 'dashicons-randomize',
 		'supports'            => array( 'title', 'editor', 'thumbnail', 'revisions' ),
-		'has_archive'         => false,  // no archive page — we use sitemap only
+		'has_archive'         => 'comparaciones',  // /comparaciones/ archive = category hub + breadcrumb parent + internal-link node
 		'rewrite'             => array(
 			'slug'       => 'comparaciones',
 			'with_front' => false,
