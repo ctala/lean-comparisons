@@ -3,7 +3,7 @@
  * Plugin Name: Lean Comparisons
  * Plugin URI:  https://github.com/ctala/lean-comparisons
  * Description: Programmatic SEO comparison pages for WordPress. CPT comparacion + reverse-linking to glosario CPT. Zero JS. No bloat.
- * Version:     1.0.1
+ * Version:     1.0.2
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Author:      Cristian Tala
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'LEAN_CMP_VERSION', '1.0.1' );
+define( 'LEAN_CMP_VERSION', '1.0.2' );
 define( 'LEAN_CMP_NS', '_lean_cmp_' );
 
 /*
@@ -98,6 +98,16 @@ function lean_cmp_register_meta() {
 
 	register_post_meta( 'comparacion', LEAN_CMP_NS . 'term_a_id', $shared );
 	register_post_meta( 'comparacion', LEAN_CMP_NS . 'term_b_id', $shared );
+
+	// FAQ JSON ([{q,a},...]) for FAQPage schema. String type (JSON-encoded).
+	register_post_meta( 'comparacion', LEAN_CMP_NS . 'faq', array(
+		'show_in_rest'  => true,
+		'single'        => true,
+		'type'          => 'string',
+		'auth_callback' => function () {
+			return current_user_can( 'edit_posts' );
+		},
+	) );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -163,7 +173,53 @@ function lean_cmp_add_to_graph( $graph, $post_id, $url ) {
 		$graph[] = $node;
 	}
 
+	$faq = lean_cmp_build_faq_node( $post_id );
+	if ( $faq ) {
+		$graph[] = $faq;
+	}
+
 	return $graph;
+}
+
+/**
+ * Build a FAQPage node from the `_lean_cmp_faq` meta (JSON array of {q, a}).
+ * The generator script sets this meta. Captures "People Also Ask" rich results.
+ *
+ * @param int $post_id Post ID.
+ * @return array|null
+ */
+function lean_cmp_build_faq_node( $post_id ) {
+	$raw = get_post_meta( $post_id, LEAN_CMP_NS . 'faq', true );
+	if ( ! $raw ) {
+		return null;
+	}
+	$faqs = is_array( $raw ) ? $raw : json_decode( $raw, true );
+	if ( ! is_array( $faqs ) || empty( $faqs ) ) {
+		return null;
+	}
+
+	$entities = array();
+	foreach ( $faqs as $f ) {
+		$q = isset( $f['q'] ) ? trim( wp_strip_all_tags( $f['q'] ) ) : '';
+		$a = isset( $f['a'] ) ? trim( wp_strip_all_tags( $f['a'] ) ) : '';
+		if ( '' === $q || '' === $a ) {
+			continue;
+		}
+		$entities[] = array(
+			'@type'          => 'Question',
+			'name'           => $q,
+			'acceptedAnswer' => array( '@type' => 'Answer', 'text' => $a ),
+		);
+	}
+	if ( empty( $entities ) ) {
+		return null;
+	}
+
+	return array(
+		'@type'      => 'FAQPage',
+		'@id'        => get_permalink( $post_id ) . '#faq',
+		'mainEntity' => $entities,
+	);
 }
 
 /**
